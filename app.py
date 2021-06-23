@@ -1,6 +1,7 @@
 # Importing the libraries
 import numpy as np
 import pandas as pd
+import plotly.express as px
 import streamlit as st
 
 st.set_page_config(page_title="Predictive Analysis App",layout='wide')
@@ -21,20 +22,33 @@ try:
                 st.table(dataset.head())
 
         st.write('''
-        ### Select all the variables you want to include in the analysis
+        ### Select all the variables you want to exclude from the analysis
         ''')
-        var = st.multiselect('Which of the following variables you want to include?',list(dataset.columns))
+        var = st.multiselect('Which of the following variables you want to exclude?',list(dataset.columns))
 
-        dataset = dataset[var]
+        if var:
+                dataset = dataset.drop(var,axis=1)
+        else:
+                pass
 
         st.write('''
         ### Select the target variable for which you want to predict values
         ''')
-        option = st.selectbox('Which of the following variables is the target/dependent variable?',list(dataset.columns))
+        target = st.selectbox('Which of the following variables is the target/dependent variable?',list(dataset.columns))
+
+        yes = st.selectbox('Does your data have a Date column?',('no','yes'))
+
+        if yes == 'yes':
+                date = st.selectbox('Which of the following variables is the DateTime Variable?',list(dataset.columns))
+                import datetime as dt
+                dataset[date] = dataset[date].apply(lambda x: dt.datetime.strptime(x,"%Y-%m-%d"))
+                dataset[date] = dataset[date].apply(lambda x: dt.datetime.timestamp(x)) #apply(lambda x: timestamp(x))
+
+        
 
 
-        X = dataset.drop(option,axis=1).values
-        y = dataset[option].values
+        X = dataset.drop(target,axis=1).values
+        y = dataset[target].values
 
 
         # Encoding categorical data
@@ -48,9 +62,12 @@ try:
         cat = st.multiselect('Which of the following variables are categorical variable? Leave blank if None',list(dataset.columns))
         category = [dataset.columns.get_loc(c) for c in cat if c in dataset]
 
+
+        
         ct = ColumnTransformer(transformers=[('encoder', OneHotEncoder(), category)], remainder='passthrough')
         X = np.array(ct.fit_transform(X))
 
+        
 
         # Splitting the dataset into the Training set and Test set
         from sklearn.model_selection import train_test_split
@@ -64,10 +81,13 @@ try:
         # Predicting the Test set results
         y_pred = regressor.predict(X_test)
         
-        st.write('''
-        ## Line Chart for Predicted and Actual values of Target Variable
+        st.write(f'''
+        ## Predicted and Actual values of Target Variable - {target}
         ''')
-        st.line_chart(pd.DataFrame(np.concatenate((y_pred.reshape(len(y_pred),1), y_test.reshape(len(y_test),1)),1),columns=['predicted', 'actual']))
+        #st.line_chart(pd.DataFrame(np.concatenate((y_pred.reshape(len(y_pred),1), y_test.reshape(len(y_test),1)),1),columns=['predicted', 'actual']))
+        chart = pd.DataFrame(np.concatenate((y_pred.reshape(len(y_pred),1), y_test.reshape(len(y_test),1)),1),columns=['predicted', 'actual'])
+        fig1 = px.line(chart, x = chart.index, y = ['predicted','actual'], labels={'x':"Data Index", 'y':f"{target}"})
+        st.plotly_chart(fig1, use_container_width=True, sharing='streamlit')
 
         st.write('''
         ## Mean Squared Error and R2 score from Regression Analysis:
@@ -76,9 +96,9 @@ try:
         st.write("R2 score: ", r2_score(y_test.reshape(len(y_test),1), y_pred.reshape(len(y_pred),1)))
 
 
-except NameError:
+except:
         st.write('''
-        ## You have not uploaded any csv file. Please upload a csv file.
+        ## Please upload a csv file, select appropriate options from dropdown menu and check if your selected options makes sense
         ''')
 
 
