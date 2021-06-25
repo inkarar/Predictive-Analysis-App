@@ -4,7 +4,6 @@ import pandas as pd
 import plotly.express as px
 import base64
 import streamlit as st
-import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Predictive Analysis App",layout='wide')
 
